@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: fleet_postgres
+    environment:
+      POSTGRES_DB:       fleetdb
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      retries: 10
+
+  seed:
+    build: .
+    container_name: fleet_seed
+    command: python 01_fleet_db_setup.py
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres/fleetdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  telemetry_mock:
+    build: .
+    container_name: fleet_telemetry
+    command: uvicorn 02a_telemetry_server:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: fleet_api
+    command: uvicorn fleet_api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres/fleetdb
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build: .
+    container_name: fleet_dashboard
+    command: uvicorn dashboard:app --host 0.0.0.0 --port 8080
+    ports:
+      - "8080:8080"
+    environment:
+      API_BASE: http://api:8000
+    depends_on:
+      - api
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: fleet_pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@fleet.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
