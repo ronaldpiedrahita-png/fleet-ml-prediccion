@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FleetML · Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:     #0a0d08;
+  --s1:     #111610;
+  --s2:     #181f14;
+  --border: #243020;
+  --lime:   #a8e63d;
+  --amber:  #f5a623;
+  --red:    #ff4444;
+  --teal:   #2dd4bf;
+  --text:   #dde8cc;
+  --muted:  #5a6e44;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(168,230,61,0.012) 2px, rgba(168,230,61,0.012) 4px
+  );
+  pointer-events:none;
+  z-index:9999;
+}
+
+header {
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.logo span { color: var(--lime); }
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 8px var(--lime);
+  animation: blink 2s infinite;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.wrap { max-width: 1600px; margin: 0 auto; padding: 20px 24px; }
+
+/* KPIs */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+@media(max-width:900px){ .kpis{ grid-template-columns: repeat(3,1fr); } }
+
+.kpi {
+  background: var(--s1);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.kpi-lbl { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
+/* Main grid */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media(max-width:1100px){ .main-grid{ grid-template-columns: 1fr; } }
+
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media(max-width:900px){ .bottom-grid{ grid-template-columns: 1fr; } }
+
+/* Panel */
+.panel {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 12px 18px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.panel-badge {
+  font-size: 10px;
+  padding: 3px 10px;
+  border: 1px solid;
+  letter-spacing: 1px;
+}
+
+.badge-red   { border-color:rgba(255,68,68,0.4);  color:var(--red);   background:rgba(255,68,68,0.08); }
+.badge-lime  { border-color:rgba(168,230,61,0.4); color:var(--lime);  background:rgba(168,230,61,0.08); }
+.badge-teal  { border-color:rgba(45,212,191,0.4); color:var(--teal);  background:rgba(45,212,191,0.08); }
+.badge-amber { border-color:rgba(245,166,35,0.4); color:var(--amber); background:rgba(245,166,35,0.08); }
+
+/* Mapa */
+#map {
+  height: 480px;
+  width: 100%;
+  background: #0d1a0a;
+}
+
+.leaflet-container { background: #0d1a0a !important; }
+
+/* Panel lateral del mapa */
+.map-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Truck detail card */
+#truck-detail {
+  padding: 16px;
+  min-height: 200px;
+  border-bottom: 1px solid var(--border);
+}
+
+.truck-detail-empty {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  padding: 40px 0;
+}
+
+.truck-card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sensor-item {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 2px;
+}
+
+.sensor-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sensor-lbl { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; }
+
+.sensor-ok       { color: var(--teal); }
+.sensor-warn     { color: var(--amber); }
+.sensor-critical { color: var(--red); }
+
+/* Mini lista de camiones */
+#truck-list {
+  overflow-y: auto;
+  flex: 1;
+  max-height: 260px;
+}
+
+.truck-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 11px;
+}
+
+.truck-list-item:hover { background: rgba(168,230,61,0.04); }
+.truck-list-item.selected { background: rgba(168,230,61,0.07); border-left: 2px solid var(--lime); }
+
+.tli-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tli-plate { color: var(--text); font-weight: 500; min-width: 75px; }
+.tli-city  { color: var(--muted); flex: 1; }
+.tli-speed { color: var(--teal); min-width: 55px; text-align: right; }
+
+/* Alerts table */
+.alerts-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.alerts-table th {
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--s2);
+}
+.alerts-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: #8aab6a;
+}
+.alerts-table tr:hover td { background: rgba(168,230,61,0.03); cursor:pointer; }
+
+.level-critical { color:var(--red);   font-weight:600; font-size:9px; letter-spacing:1px; }
+.level-high     { color:var(--amber); font-weight:600; font-size:9px; }
+.level-watch    { color:var(--teal);  font-weight:600; font-size:9px; }
+
+.prob-wrap { display:flex; align-items:center; gap:6px; }
+.prob-bar  { height:3px; background:var(--border); width:60px; }
+.prob-fill { height:100%; background:var(--red); }
+
+/* Feature bars */
+.feat-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+.feat-name { font-size:10px; color:#7a9060; min-width:160px; }
+.feat-bar-wrap { flex:1; height:5px; background:var(--border); }
+.feat-bar-fill { height:100%; background:linear-gradient(90deg,var(--lime),var(--teal)); }
+.feat-val { font-size:10px; color:var(--lime); min-width:45px; text-align:right; }
+
+/* Distribución */
+.dist-row { margin-bottom:14px; }
+.dist-label { display:flex; justify-content:space-between; margin-bottom:5px; font-size:10px; }
+.dist-bar { height:6px; background:var(--border); }
+.dist-fill { height:100%; transition: width 0.5s; }
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fleet<span>ML</span> · Dashboard</div>
+  <div class="status-bar">
+    <span><span class="live-dot"></span>SISTEMA ACTIVO</span>
+    <span id="clock">--:--:--</span>
+    <span id="refresh-counter">Actualizando en 30s</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis">
+    <div class="kpi"><span class="kpi-val" style="color:var(--lime)" id="kpi-total">--</span><span class="kpi-lbl">Total Camiones</span></div>
+    <div class="kpi"><span class="kpi-val" style="color:var(--red)"  id="kpi-critical">--</span><span class="kpi-lbl">⛔ Critical</span></div>
+    <div class="kpi"><span class="kpi-val" style="color:var(--amber)"id="kpi-high">--</span><span class="kpi-lbl">⚠️ High Risk</span></div>
+    <div class="kpi"><span class="kpi-val" style="color:var(--teal)" id="kpi-ok">--</span><span class="kpi-lbl">✅ Operando OK</span></div>
+    <div class="kpi"><span class="kpi-val" style="color:var(--lime)" id="kpi-preds">--</span><span class="kpi-lbl">Predicciones</span></div>
+    <div class="kpi"><span class="kpi-val" style="color:var(--amber);font-size:1.8rem" id="kpi-model">v1.0</span><span class="kpi-lbl">Modelo Activo</span></div>
+  </div>
+
+  <!-- MAPA + SIDEBAR -->
+  <div class="main-grid">
+
+    <!-- Mapa -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📍 Posición en Tiempo Real</span>
+        <span class="panel-badge badge-lime" id="map-count">-- camiones</span>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="map-sidebar">
+
+      <!-- Detalle del camión seleccionado -->
+      <div class="panel" style="flex-shrink:0">
+        <div class="panel-header">
+          <span class="panel-title">Detalle Camión</span>
+          <span class="panel-badge badge-teal" id="detail-badge">Selecciona un camión</span>
+        </div>
+        <div id="truck-detail">
+          <div class="truck-detail-empty">
+            Haz clic en un marcador del mapa<br>o en un camión de la lista
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de camiones críticos -->
+      <div class="panel" style="flex:1">
+        <div class="panel-header">
+          <span class="panel-title">Camiones en Alerta</span>
+          <span class="panel-badge badge-red" id="alert-count">--</span>
+        </div>
+        <div id="truck-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+
+    <!-- Tabla alertas -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Alertas Activas</span>
+        <span class="panel-badge badge-red" id="alerts-badge">--</span>
+      </div>
+      <div style="overflow:auto; max-height:280px;">
+        <table class="alerts-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Placa</th><th>Ciudad</th>
+              <th>Nivel</th><th>Prob.</th><th>Factor</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Features SHAP -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Top Features</span>
+        <span class="panel-badge badge-lime">SHAP</span>
+      </div>
+      <div style="padding:14px 18px;" id="features-panel"></div>
+    </div>
+
+    <!-- Distribución -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Distribución de Riesgo</span>
+        <span class="panel-badge badge-teal">200 camiones</span>
+      </div>
+      <div style="padding:20px;" id="dist-panel"></div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <span>FleetML · Sistema de Mantenimiento Predictivo</span>
+  <span id="last-update">--</span>
+  <span>Auto-refresh cada 30s</span>
+</footer>
+
+<script>
+const API      = 'http://localhost:8000';
+const REFRESH  = 30;
+let countdown  = REFRESH;
+let map        = null;
+let markers    = {};
+let positions  = [];
+let selected   = null;
+
+// ── Inicializar mapa ──────────────────────────────────────
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([22.5, -102], 5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '©OpenStreetMap ©CartoDB',
+    maxZoom: 18
+  }).addTo(map);
+}
+
+// ── Colores por nivel de alerta ───────────────────────────
+const COLORS = {
+  'CRITICAL': '#ff4444',
+  'HIGH':     '#f5a623',
+  'WATCH':    '#2dd4bf',
+  'OK':       '#a8e63d'
+};
+
+function makeIcon(level, speed) {
+  const color = COLORS[level] || '#a8e63d';
+  const isMoving = speed > 5;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="14" cy="14" r="10" fill="${color}" opacity="0.25"/>
+      <circle cx="14" cy="14" r="6"  fill="${color}"/>
+      ${isMoving ? `<circle cx="14" cy="14" r="10" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.5"/>` : ''}
+    </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+}
+
+// ── Actualizar mapa con posiciones ────────────────────────
+function updateMap(data) {
+  positions = data;
+  document.getElementById('map-count').textContent = `${data.length} camiones`;
+
+  data.forEach(t => {
+    const popup = `
+      <div style="font-family:monospace;font-size:11px;color:#dde8cc;background:#111610;padding:8px;min-width:160px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">${t.plate} · ${t.model}</div>
+        <div style="color:${COLORS[t.alert_level]};font-weight:600;margin-bottom:4px">${t.alert_level}</div>
+        <div>🌡️ Motor: <b>${t.engine_temp_c?.toFixed(1)}°C</b></div>
+        <div>⚡ Velocidad: <b>${t.speed_kmh?.toFixed(0)} km/h</b></div>
+        <div>🛢️ Aceite: <b>${t.oil_pressure?.toFixed(2)} bar</b></div>
+        <div style="color:#5a6e44;margin-top:4px">${t.city}</div>
+      </div>`;
+
+    if (markers[t.truck_id]) {
+      markers[t.truck_id].setLatLng([t.lat, t.lon]);
+      markers[t.truck_id].setIcon(makeIcon(t.alert_level, t.speed_kmh));
+      markers[t.truck_id].setPopupContent(popup);
+    } else {
+      const m = L.marker([t.lat, t.lon], { icon: makeIcon(t.alert_level, t.speed_kmh) })
+        .bindPopup(popup, { className: 'fleet-popup' })
+        .addTo(map);
+      m.on('click', () => showTruckDetail(t));
+      markers[t.truck_id] = m;
+    }
+  });
+}
+
+// ── Detalle del camión seleccionado ───────────────────────
+function showTruckDetail(t) {
+  selected = t.truck_id;
+  const color = COLORS[t.alert_level] || '#a8e63d';
+  const tempClass = t.engine_temp_c > 105 ? 'sensor-critical' : t.engine_temp_c > 95 ? 'sensor-warn' : 'sensor-ok';
+  const oilClass  = t.oil_pressure < 2.0 ? 'sensor-critical' : t.oil_pressure < 3.0 ? 'sensor-warn' : 'sensor-ok';
+
+  document.getElementById('detail-badge').textContent = t.plate;
+  document.getElementById('detail-badge').style.color = color;
+  document.getElementById('detail-badge').style.borderColor = color;
+
+  document.getElementById('truck-detail').innerHTML = `
+    <div class="truck-card-title">
+      <span>${t.plate}</span>
+      <span style="color:${color};font-size:1rem">${t.alert_level}</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      ${t.model} · ${t.city}
+    </div>
+    <div class="sensor-grid">
+      <div class="sensor-item">
+        <div class="sensor-val ${tempClass}">${t.engine_temp_c?.toFixed(1)}°C</div>
+        <div class="sensor-lbl">Temp Motor</div>
+      </div>
+      <div class="sensor-item">
+        <div class="sensor-val ${oilClass}">${t.oil_pressure?.toFixed(2)}</div>
+        <div class="sensor-lbl">Presión Aceite</div>
+      </div>
+      <div class="sensor-item">
+        <div class="sensor-val sensor-ok">${t.speed_kmh?.toFixed(0)}</div>
+        <div class="sensor-lbl">Velocidad km/h</div>
+      </div>
+      <div class="sensor-item">
+        <div class="sensor-val" style="color:var(--amber)">${(t.failure_prob*100).toFixed(0)}%</div>
+        <div class="sensor-lbl">Prob. Fallo</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:10px;color:var(--muted)">
+      Última señal: ${t.last_seen?.substring(11,19)} UTC
+    </div>`;
+
+  // Centrar mapa en el camión
+  map.setView([t.lat, t.lon], 8);
+  if (markers[t.truck_id]) markers[t.truck_id].openPopup();
+
+  // Highlight en lista
+  document.querySelectorAll('.truck-list-item').forEach(el => el.classList.remove('selected'));
+  const listItem = document.getElementById(`tli-${t.truck_id}`);
+  if (listItem) listItem.classList.add('selected');
+}
+
+// ── Lista de camiones en alerta ───────────────────────────
+function updateTruckList(data) {
+  const alerts = data.filter(t => t.alert_level === 'CRITICAL' || t.alert_level === 'HIGH')
+                     .sort((a,b) => b.failure_prob - a.failure_prob);
+
+  document.getElementById('alert-count').textContent = `${alerts.length} alertas`;
+
+  document.getElementById('truck-list').innerHTML = alerts.map(t => `
+    <div class="truck-list-item ${selected === t.truck_id ? 'selected' : ''}"
+         id="tli-${t.truck_id}"
+         onclick="showTruckDetail(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+      <div class="tli-dot" style="background:${COLORS[t.alert_level]}"></div>
+      <div class="tli-plate">${t.plate}</div>
+      <div class="tli-city">${t.city}</div>
+      <div class="tli-speed">${t.speed_kmh?.toFixed(0)} km/h</div>
+    </div>
+  `).join('') || '<div style="padding:20px;color:var(--muted);font-size:11px;text-align:center">Sin alertas activas</div>';
+}
+
+// ── Tabla de alertas ──────────────────────────────────────
+function updateAlertsTable(alerts) {
+  document.getElementById('alerts-badge').textContent = `${alerts.total_alerts || 0} alertas`;
+  const rows = (alerts.alerts || []).map(a => `
+    <tr onclick="focusTruck(${a.truck_id})">
+      <td>#${a.truck_id}</td>
+      <td>${a.plate}</td>
+      <td>${a.city}</td>
+      <td><span class="level-${a.alert_level?.toLowerCase()}">${a.alert_level}</span></td>
+      <td>
+        <div class="prob-wrap">
+          <div class="prob-bar"><div class="prob-fill" style="width:${(a.failure_prob*100).toFixed(0)}%"></div></div>
+          ${(a.failure_prob*100).toFixed(0)}%
+        </div>
+      </td>
+      <td style="color:var(--muted)">${a.top_risk}</td>
+    </tr>`).join('');
+  document.getElementById('alerts-body').innerHTML = rows ||
+    '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">Sin alertas</td></tr>';
+}
+
+function focusTruck(truck_id) {
+  const t = positions.find(p => p.truck_id === truck_id);
+  if (t) showTruckDetail(t);
+}
+
+// ── Features SHAP ─────────────────────────────────────────
+function renderFeatures() {
+  const features = [
+    { name: 'Total Downtime Days', val: 0.097 },
+    { name: 'Total Fallos',        val: 0.082 },
+    { name: 'Ratio Fallos',        val: 0.068 },
+    { name: 'Max Temp 7d',         val: 0.033 },
+    { name: 'Avg Temp 7d',         val: 0.031 },
+    { name: 'Avg Oil 7d',          val: 0.027 },
+    { name: 'Fault Codes 30d',     val: 0.027 },
+    { name: 'Avg Coolant 7d',      val: 0.026 },
+  ];
+  const max = features[0].val;
+  document.getElementById('features-panel').innerHTML = features.map(f => `
+    <div class="feat-row">
+      <div class="feat-name">${f.name}</div>
+      <div class="feat-bar-wrap">
+        <div class="feat-bar-fill" style="width:${(f.val/max*100).toFixed(0)}%"></div>
+      </div>
+      <div class="feat-val">${f.val.toFixed(3)}</div>
+    </div>`).join('');
+}
+
+// ── Distribución de riesgo ────────────────────────────────
+function renderDist(summary) {
+  const s     = summary.summary || {};
+  const total = Object.values(s).reduce((a,b) => a+b, 0) || 1;
+  const levels = [
+    { key:'CRITICAL', color:'#ff4444' },
+    { key:'HIGH',     color:'#f5a623' },
+    { key:'WATCH',    color:'#2dd4bf' },
+    { key:'OK',       color:'#a8e63d' },
+  ];
+  document.getElementById('dist-panel').innerHTML = levels
+    .filter(l => s[l.key] > 0)
+    .map(l => `
+      <div class="dist-row">
+        <div class="dist-label">
+          <span style="color:${l.color};letter-spacing:1px;font-size:10px">${l.key}</span>
+          <span style="color:var(--muted);font-size:10px">${s[l.key]} (${((s[l.key]/total)*100).toFixed(0)}%)</span>
+        </div>
+        <div class="dist-bar">
+          <div class="dist-fill" style="width:${((s[l.key]/total)*100).toFixed(0)}%;background:${l.color}"></div>
+        </div>
+      </div>`).join('');
+}
+
+// ── KPIs ──────────────────────────────────────────────────
+function updateKPIs(summary) {
+  const s = summary.summary || {};
+  const total = Object.values(s).reduce((a,b) => a+b, 0);
+  document.getElementById('kpi-total').textContent    = total;
+  document.getElementById('kpi-critical').textContent = s.CRITICAL || 0;
+  document.getElementById('kpi-high').textContent     = s.HIGH     || 0;
+  document.getElementById('kpi-ok').textContent       = s.OK       || 0;
+  document.getElementById('kpi-preds').textContent    = summary.total_predictions || 0;
+}
+
+// ── Fetch principal ───────────────────────────────────────
+async function refreshAll() {
+  try {
+    const [posRes, alertRes, summaryRes] = await Promise.all([
+      fetch(`${API}/fleet/positions`),
+      fetch(`${API}/fleet/alerts`),
+      fetch(`${API}/fleet/summary`)
+    ]);
+
+    const posData     = await posRes.json();
+    const alertData   = await alertRes.json();
+    const summaryData = await summaryRes.json();
+
+    updateMap(posData);
+    updateTruckList(posData);
+    updateAlertsTable(alertData);
+    updateKPIs(summaryData);
+    renderDist(summaryData);
+
+    document.getElementById('last-update').textContent =
+      'Última actualización: ' + new Date().toLocaleTimeString('es-CO');
+
+  } catch(e) {
+    console.error('Error actualizando datos:', e);
+  }
+}
+
+// ── Reloj y countdown ─────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('es-CO', {hour12:false});
+  countdown--;
+  if (countdown <= 0) {
+    countdown = REFRESH;
+    refreshAll();
+  }
+  document.getElementById('refresh-counter').textContent = `Actualizando en ${countdown}s`;
+}
+
+// ── Init ──────────────────────────────────────────────────
+initMap();
+renderFeatures();
+refreshAll();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
