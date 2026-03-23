@@ -4,7 +4,7 @@ ok, errs = 0, 0
 for truck_id in range(1, 201):
     try:
         r = requests.get(
-            f"http://localhost:8000/predict/truck/{truck_id}/auto",
+            f"https://fleet-ml-prediccion-production.up.railway.app/predict/truck/{truck_id}/auto",
             timeout=5
         )
         if r.status_code == 200:
