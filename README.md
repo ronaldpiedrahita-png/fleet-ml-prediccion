@@ -15,6 +15,33 @@ Sistema end-to-end de **mantenimiento predictivo** para flotas de tracto-camione
 
 ---
 
+## Problema de negocio e impacto
+
+En el transporte de carga, un **fallo de motor no planificado** no es solo una
+reparación: es un tracto-camión parado en carretera, entregas incumplidas, una
+grúa, y una reparación de emergencia que cuesta varias veces más que una
+programada. En la industria, el costo de una avería mayor y sus días fuera de
+servicio se mide en **decenas de miles de dólares por evento**.
+
+Hay tres formas de mantener una flota:
+
+| Estrategia | Cómo funciona | Problema |
+|---|---|---|
+| **Reactiva** | Reparar cuando se rompe | Averías en ruta, costo máximo |
+| **Preventiva** | Calendario fijo (cada X km) | Sobre-mantiene equipos sanos |
+| **Predictiva** (este proyecto) | Reparar *justo antes* del fallo | Requiere datos + modelo |
+
+**Qué resuelve FleetML:** anticipa con ~30 días la probabilidad de fallo de motor
+por camión a partir de su telemetría, para pasar de apagar incendios a **planificar
+el taller**. El modelo prioriza *recall* (detectar el máximo de fallos reales)
+porque, en este dominio, **no detectar una avería cuesta mucho más que una falsa
+alarma** — y esa decisión de negocio es la que fija el umbral de clasificación.
+
+> Las cifras de costo son contexto del sector (ilustrativas), no resultados medidos
+> de este proyecto, que usa datos sintéticos (ver más abajo).
+
+---
+
 ## Arquitectura del Sistema
 
 ```
@@ -107,22 +134,25 @@ GET  /docs                           → Documentación Swagger
 
 ```
 fleet-ml-prediccion/
-├── 01_fleet_db_setup.py        # Esquema SQL + seed data
+├── 01_fleet_db_setup.py        # Esquema SQL + seed data (desgaste + fallo probabilístico)
 ├── 02a_telemetry_server.py     # Servidor mock de sensores
 ├── 02b_telemetry_ingestor.py   # Cliente de ingesta paralela
 ├── 03_fuel_api.py              # API de combustible CRE
-├── 04_feature_engineering.py   # Features desde SQL
-├── 05_train_model.py           # Entrenamiento + MLflow + SHAP
+├── 04_feature_engineering.py   # Features desde SQL (sin columnas con fuga)
+├── 05_train_model.py           # Entrenamiento + CV + SHAP
+├── generate_dataset.py         # Genera el dataset sintético SIN base de datos
+├── ml_features.py              # Selección de features (fuente única, anti-fuga)
 ├── fleet_api.py                # API de predicción (FastAPI)
 ├── dashboard.py                # Servidor del dashboard web
 ├── 07_scheduler.py             # Jobs automáticos (APScheduler)
-├── templates/
-│   └── dashboard.html          # Dashboard con mapa Leaflet
+├── tests/                      # Suite de pytest (fuga, modelo, API, datos)
+├── .github/workflows/ci.yml    # Integración continua (GitHub Actions)
+├── templates/dashboard.html    # Dashboard con mapa Leaflet
 ├── models/                     # Modelo entrenado (.pkl)
 ├── data/                       # Datasets generados (.csv)
-├── Dockerfile                  # Imagen Docker
-├── docker-compose.yml          # Orquestación de servicios
-└── requirements.txt            # Dependencias Python
+├── .env.example                # Plantilla de variables de entorno
+├── Dockerfile · docker-compose.yml
+├── requirements.txt · pytest.ini · LICENSE
 ```
 
 ---
@@ -130,8 +160,8 @@ fleet-ml-prediccion/
 ## Ejecución Local
 
 ### Requisitos
-- Python 3.11+
-- PostgreSQL 15
+- Python 3.12
+- PostgreSQL 15 *(opcional — ver "Opción rápida" más abajo)*
 - Docker Desktop (para deploy en contenedores)
 
 ### Instalación
@@ -149,9 +179,19 @@ source venv/bin/activate  # Mac/Linux
 # Instalar dependencias
 pip install -r requirements.txt
 
-# Configurar base de datos
-# Crear archivo .env con:
-# DATABASE_URL=postgresql://postgres:tu_password@localhost/fleetdb
+# Configurar base de datos: copiar la plantilla y poner tu contraseña
+cp .env.example .env      # luego edita DATABASE_URL en .env
+```
+
+### Opción rápida — reproducir el modelo sin base de datos
+
+El dataset de features se puede **regenerar sin PostgreSQL** (datos sintéticos
+realistas). Ideal para revisar el modelo end-to-end en segundos:
+
+```bash
+python generate_dataset.py      # genera data/fleet_features.csv (sin BD)
+python 05_train_model.py        # entrena y reporta métricas honestas (AUC ~0.78)
+pytest                          # corre los 11 tests (incluye guarda anti-fuga)
 ```
 
 ### Ejecutar el pipeline completo
@@ -206,6 +246,21 @@ docker compose down
 
 ---
 
+## Datos y transparencia
+
+Los datos son **100% sintéticos** — no provienen de una flota real. Se generan con
+un modelo físico simplificado: cada camión tiene un *desgaste* latente que crece
+con el kilometraje y la edad, se refleja en sus sensores **con ruido de medición**
+(las lecturas de camiones sanos y averiados se solapan, como en la realidad) y
+eleva la probabilidad de fallo de forma **probabilística**.
+
+Esto es deliberado. Una versión anterior generaba los datos con un umbral duro que
+hacía el problema trivial (AUC = 1.0 por fuga de datos). Los datos actuales
+producen un problema **aprendible pero no trivial**, con métricas creíbles, y un
+test automático impide que la fuga reaparezca.
+
+---
+
 ## Resultados del Modelo
 
 Métricas por **validación cruzada 5-fold** sobre 200 camiones (24.5% con fallo).
@@ -241,14 +296,19 @@ un fallo cuesta más que una falsa alarma).
 
 ## Lo que aprendí en este proyecto
 
+- **Detectar y corregir fuga de datos (*data leakage*)**: un AUC de 1.0 casi nunca
+  es un logro — aquí era una señal de que features derivadas del target y un
+  generador de datos degenerado hacían el problema trivial. Aprendí a diagnosticarlo
+  (AUC individual por feature), corregirlo y **blindarlo con un test automático**.
+- **Elegir el umbral desde el negocio**, no desde la métrica: priorizar *recall*
+  porque un falso negativo (avería no detectada) cuesta más que un falso positivo.
+- **Validación honesta en datasets pequeños**: validación cruzada 5-fold y
+  predicciones out-of-fold en lugar de un único split.
 - Diseño de esquemas SQL para datos industriales de series de tiempo
-- Consumo y creación de APIs REST con autenticación Bearer Token
-- Feature engineering avanzado con ventanas de tiempo en SQL
-- Mantenimiento predictivo con modelos de clasificación binaria
-- Explainability con SHAP values para contextos industriales
-- Deploy de modelos ML como APIs REST con FastAPI
-- Containerización con Docker y docker-compose
-- Deploy en producción con Railway
+- Feature engineering con ventanas de tiempo en SQL
+- Explainability con SHAP para contextos industriales
+- Deploy de modelos ML como APIs REST con FastAPI + tests + CI
+- Containerización con Docker y deploy en producción (Railway)
 
 ---
 

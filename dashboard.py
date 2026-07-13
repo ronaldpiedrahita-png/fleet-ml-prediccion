@@ -7,7 +7,6 @@ import requests
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import os
 
 os.makedirs("templates", exist_ok=True)
 
@@ -24,6 +23,7 @@ def get_fleet_data():
         health  = requests.get(f"{API_BASE}/health",        timeout=3).json()
         return summary, alerts, health
     except Exception as e:
+        print(f"[dashboard] No se pudo obtener datos de la API ({API_BASE}): {e}")
         return {}, {"alerts": []}, {}
 
 
