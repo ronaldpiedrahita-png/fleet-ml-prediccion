@@ -137,7 +137,7 @@ fleet-ml-prediccion/
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/TuUsuario/fleet-ml-prediccion.git
+git clone https://github.com/ronaldpiedrahita-png/fleet-ml-prediccion.git
 cd fleet-ml-prediccion
 
 # Crear entorno virtual
@@ -253,9 +253,9 @@ un fallo cuesta más que una falsa alarma).
 
 ## Autor
 
-**Ronald** — ingeniero industrial - especialista Analitica bigdata
+**Ronald Piedrahita** — Ingeniero Industrial · Especialista en Analítica y Big Data
 
-[![GitHub](https://img.shields.io/badge/GitHub-TuUsuario-black?logo=github)](https://github.com/TuUsuario)
+[![GitHub](https://img.shields.io/badge/GitHub-ronaldpiedrahita--png-black?logo=github)](https://github.com/ronaldpiedrahita-png)
 
 ---
 

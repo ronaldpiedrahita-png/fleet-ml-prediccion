@@ -107,15 +107,21 @@ for name, pipeline in MODELS.items():
     print(f"  Matriz de confusion [[TN FP] [FN TP]]:\n{cm}")
 
     if MLFLOW_AVAILABLE:
-        with mlflow.start_run(run_name=name):
-            mlflow.log_params({"model": name, "n_features": len(FEATURES),
-                               "n_rows": len(X), "threshold": round(thr, 2)})
-            mlflow.log_metrics({
-                "oof_auc": float(oof_auc), "f1": float(f1),
-                "recall_failure": float(recall_fail),
-                "precision_failure": float(precision_fail),
-            })
-            mlflow.sklearn.log_model(pipeline, name=name)
+        try:
+            with mlflow.start_run(run_name=name):
+                mlflow.log_params({"model": name, "n_features": len(FEATURES),
+                                   "n_rows": len(X), "threshold": round(thr, 2)})
+                mlflow.log_metrics({
+                    "oof_auc": float(oof_auc), "f1": float(f1),
+                    "recall_failure": float(recall_fail),
+                    "precision_failure": float(precision_fail),
+                })
+                try:
+                    mlflow.sklearn.log_model(pipeline, name=name)          # mlflow >= 3
+                except TypeError:
+                    mlflow.sklearn.log_model(pipeline, artifact_path=name)  # mlflow < 3
+        except Exception as e:                           # pragma: no cover
+            print(f"  (MLflow: no se registro el run: {e})")
 
     if oof_auc > best_auc:
         best_auc, best_name, best_model = oof_auc, name, pipeline
