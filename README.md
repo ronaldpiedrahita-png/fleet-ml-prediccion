@@ -5,13 +5,13 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)
-![Railway](https://img.shields.io/badge/Deploy-Railway-purple?logo=railway)
 ![XGBoost](https://img.shields.io/badge/ML-XGBoost-orange)
 ![MLflow](https://img.shields.io/badge/MLflow-Tracking-blue)
 
 Sistema end-to-end de **mantenimiento predictivo** para flotas de tracto-camiones. Predice la probabilidad de fallo de motor en los próximos 30 días usando telemetría en tiempo real, datos de combustible y Machine Learning.
 
-**Demo en producción:** https://fleet-ml-prediccion-production.up.railway.app/docs
+> Se ejecuta localmente con Docker (ver "Ejecución Local"). Documentación
+> interactiva de la API disponible en `/docs` (Swagger UI).
 
 ---
 
@@ -74,7 +74,7 @@ Dashboard Web con mapa en tiempo real
 | Automatización | APScheduler |
 | Frontend | HTML + CSS + Leaflet.js (mapa GPS) |
 | Containerización | Docker + docker-compose |
-| Deploy | Railway (nube) |
+| Deploy | Docker (self-host) |
 
 ---
 
@@ -89,7 +89,7 @@ Dashboard Web con mapa en tiempo real
 - **Dashboard en tiempo real** con mapa de México, auto-refresh cada 30s
 - **Schedule automático** — predicciones cada hora sin intervención
 - **API documentada** con Swagger UI
-- **Deploy completo** en Docker y Railway
+- **Deploy completo** con Docker y docker-compose
 
 ---
 
@@ -308,7 +308,7 @@ un fallo cuesta más que una falsa alarma).
 - Feature engineering con ventanas de tiempo en SQL
 - Explainability con SHAP para contextos industriales
 - Deploy de modelos ML como APIs REST con FastAPI + tests + CI
-- Containerización con Docker y deploy en producción (Railway)
+- Containerización con Docker para un despliegue reproducible
 
 ---
 

@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 os.makedirs("templates", exist_ok=True)
 
-API_BASE = os.getenv("API_BASE", "https://fleet-ml-prediccion-production.up.railway.app")
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 app      = FastAPI(title="Fleet Dashboard")
 templates = Jinja2Templates(directory="templates")
 
