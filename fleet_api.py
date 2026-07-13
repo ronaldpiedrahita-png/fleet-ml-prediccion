@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from fastapi.middleware.cors import CORSMiddleware
 
 # ── Conexión directa ───────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:***REMOVED***@localhost/fleetdb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/fleetdb")
 engine        = create_engine(DATABASE_URL)
 SessionLocal  = sessionmaker(bind=engine)
 MODEL_VER     = "v1.0"
@@ -76,10 +76,7 @@ class TruckFeatures(BaseModel):
     avg_kpl_30d:           float = 0.0
     min_kpl_30d:           float = 0.0
     kpl_trend:             float = 0.0
-    total_fallos:          float = 0.0
-    ratio_fallos:          float = 0.0
     days_since_last_maint: float = 0.0
-    total_downtime_days:   float = 0.0
     km_recorridos_30d:     float = 0.0
     temp_trend:            float = 0.0
     oil_trend:             float = 0.0

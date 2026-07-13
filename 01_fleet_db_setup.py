@@ -13,7 +13,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 import enum
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:***REMOVED***@localhost/fleetdb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/fleetdb")
 engine       = create_engine(DATABASE_URL, echo=False)
 Session      = sessionmaker(bind=engine)
 Base         = declarative_base()
@@ -123,12 +123,17 @@ MAINT_TYPES   = ["oil_change", "tire_rotation", "brake_inspection",
                   "filter_change", "full_service"]
 
 
-def simulate_engine_temp(base_temp=88, is_degraded=False):
-    """Motor sano: 85-95Â°C. Degradado: puede superar 100Â°C."""
-    noise = np.random.normal(0, 3)
-    if is_degraded:
-        return round(base_temp + noise + random.uniform(8, 25), 1)
-    return round(base_temp + noise, 1)
+def simulate_engine_temp(base_temp=88, wear=0.0):
+    """Temperatura crece de forma continua con el desgaste, CON ruido.
+
+    Sano (~88C) y desgastado (~104C) se solapan: el ruido de medicion impide
+    que la temperatura por si sola separe perfectamente los camiones que fallan.
+    """
+    return round(base_temp + 16 * wear + np.random.normal(0, 3), 1)
+
+
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
 
 
 def seed_fleet(n_trucks=200, days_history=90):
@@ -141,7 +146,20 @@ def seed_fleet(n_trucks=200, days_history=90):
         year        = random.randint(2016, 2023)
         odometer    = random.uniform(50_000, 600_000)
         eng_hours   = odometer / random.uniform(55, 75)
-        is_degraded = odometer > 400_000  # camiones muy usados = degradados
+
+        # Desgaste latente CONTINUO (0 = nuevo, ~1 = muy desgastado): km + edad
+        # + variacion individual. Reemplaza al viejo umbral duro odometer>400k,
+        # que hacia el problema trivial (AUC=1.0 por fuga de datos).
+        wear = min(1.2, max(0.0,
+            0.60 * (odometer - 50_000) / 550_000
+            + 0.25 * (2023 - year) / 7
+            + np.random.normal(0, 0.15)))
+
+        # Propension a fallo: sigmoide del desgaste + un shock NO observado.
+        # Al ser probabilistica (no un umbral), un camion desgastado puede no
+        # fallar y uno nuevo si -> el modelo aprende, pero nunca perfecto.
+        fail_propensity = sigmoid(4.5 * (wear - 0.62) + np.random.normal(0, 0.8))
+        truck_will_fail = random.random() < fail_propensity
 
         truck = Truck(
             plate       = f"{random.choice('ABCDEFGHJKLMNPRSTUVWXYZ')}{random.choice('ABCDEFGHJKLMNPRSTUVWXYZ')}{random.choice('ABCDEFGHJKLMNPRSTUVWXYZ')}-{random.randint(1000,9999)}",
@@ -150,7 +168,7 @@ def seed_fleet(n_trucks=200, days_history=90):
             year        = year,
             odometer_km = round(odometer, 1),
             engine_hours = round(eng_hours, 1),
-            status      = "critical" if is_degraded and random.random() > 0.7 else "active",
+            status      = "critical" if truck_will_fail and random.random() > 0.7 else "active",
             base_city   = city_name,
         )
         session.add(truck)
@@ -165,7 +183,7 @@ def seed_fleet(n_trucks=200, days_history=90):
             rpm      = random.uniform(1200, 2000) if moving else random.uniform(600, 800)
             odo_cursor += speed / 3600  # km por hora
             fault    = None
-            if is_degraded and random.random() > 0.98:
+            if random.random() < 0.005 + 0.05 * wear:   # mas probable con desgaste
                 fault = random.choice(["P0217", "P0524", "P0118", "P0300"])
 
             tl = Telemetry(
@@ -175,9 +193,9 @@ def seed_fleet(n_trucks=200, days_history=90):
                 longitude      = lon + np.random.normal(0, 0.5),
                 speed_kmh      = round(speed, 1),
                 rpm            = round(rpm, 0),
-                engine_temp_c  = simulate_engine_temp(is_degraded=is_degraded),
-                oil_pressure_bar = round(random.uniform(2.8 if not is_degraded else 1.5, 5.0), 2),
-                coolant_temp_c = round(random.uniform(85, 105 if is_degraded else 95), 1),
+                engine_temp_c  = simulate_engine_temp(wear=wear),
+                oil_pressure_bar = round(max(0.8, 4.6 - 2.3 * wear + np.random.normal(0, 0.4)), 2),
+                coolant_temp_c = round(88 + 12 * wear + np.random.normal(0, 3), 1),
                 battery_v      = round(random.uniform(13.5, 14.8), 2),
                 odometer_km    = round(odo_cursor, 1),
                 fault_code     = fault,
@@ -189,7 +207,8 @@ def seed_fleet(n_trucks=200, days_history=90):
         last_km = odometer - (days_history * 350)
         for d in range(0, days_history, random.randint(2, 3)):
             km_driven = random.uniform(400, 800)
-            liters    = km_driven / random.uniform(4.5 if is_degraded else 6.5, 8.0)
+            kpl       = max(3.5, 7.6 - 2.2 * wear + random.gauss(0, 0.5))  # rendimiento cae con desgaste
+            liters    = km_driven / kpl
             session.add(FuelLog(
                 truck_id       = truck.id,
                 fueled_at      = datetime.utcnow() - timedelta(days=days_history-d),
@@ -202,9 +221,13 @@ def seed_fleet(n_trucks=200, days_history=90):
             ))
 
         # â”€â”€ Mantenimientos: 2-8 eventos por camiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        n_events = random.randint(2, 8)
-        for _ in range(n_events):
-            is_failure = is_degraded and random.random() > 0.4
+        # Si el camion falla (segun su propension probabilistica), 1..n de sus
+        # eventos son fallos no planificados; si no, ninguno lo es.
+        n_events   = random.randint(2, 8)
+        n_fail     = random.randint(1, n_events) if truck_will_fail else 0
+        fail_flags = [True] * n_fail + [False] * (n_events - n_fail)
+        random.shuffle(fail_flags)
+        for is_failure in fail_flags:
             etype      = random.choice(FAILURE_TYPES if is_failure else MAINT_TYPES)
             session.add(MaintenanceEvent(
                 truck_id          = truck.id,

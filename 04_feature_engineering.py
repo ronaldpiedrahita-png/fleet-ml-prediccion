@@ -6,7 +6,7 @@ import numpy as np
 from sqlalchemy import create_engine, text
 
 # ── Conexión directa ───────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:***REMOVED***@localhost/fleetdb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/fleetdb")
 engine  = create_engine(DATABASE_URL)
 
 # ── QUERY 1: Telemetría con ventanas de tiempo ─────────────
@@ -138,7 +138,10 @@ def build_ml_dataset():
     df["fault_accel"]   = df["fault_codes_7d"].fillna(0) / (df["fault_codes_30d"].fillna(0) + 1)
     df["overdue_maint"] = (df["days_since_last_maint"].fillna(0) > 90).astype(int)
 
-    # Lista final de features
+    # Lista final de features.
+    # OJO: total_fallos, ratio_fallos y total_downtime_days derivan de la propia
+    # etiqueta de fallo (is_failure) -> serian FUGA DE DATOS. Se excluyen a
+    # proposito. La lista negra vive en ml_features.LEAKING_FEATURES.
     FEATURES = [
         "truck_age_years", "odometer_km",    "engine_hours",
         "avg_temp_7d",     "max_temp_7d",    "std_temp_7d",
@@ -146,8 +149,7 @@ def build_ml_dataset():
         "avg_rpm_7d",      "avg_coolant_7d", "avg_battery_7d",
         "fault_codes_7d",  "fault_codes_30d",
         "avg_kpl_30d",     "min_kpl_30d",    "kpl_trend",
-        "total_fallos",    "ratio_fallos",   "days_since_last_maint",
-        "total_downtime_days", "km_recorridos_30d",
+        "days_since_last_maint", "km_recorridos_30d",
         "temp_trend",      "oil_trend",      "fault_accel",
         "overdue_maint",
     ]

@@ -23,7 +23,7 @@ Ingesta cada 30s → PostgreSQL
         ↓
 Feature Engineering (SQL con ventanas de tiempo)
         ↓
-Modelo ML (Random Forest · AUC=1.0)
+Modelo ML (Random Forest · AUC≈0.78, validado 5-fold)
         ↓
 API REST en producción (FastAPI)
         ↓
@@ -80,7 +80,7 @@ Consume la API pública de la CRE México (datos abiertos, sin API key). Calcula
 SQL avanzado con `GROUP BY`, `CASE WHEN`, `JOIN`, funciones de ventana `ROW_NUMBER()` para extraer 25 features de series de tiempo por camión.
 
 ### Etapa 5 — Entrenamiento ML
-Comparación Random Forest vs XGBoost en MLflow. SMOTE para desbalance de clases. SHAP values para explainability. AUC-ROC: 1.0.
+Comparación Random Forest vs XGBoost en MLflow. Ponderación de clases (`class_weight="balanced"` / `scale_pos_weight`) para el desbalance. Evaluación con **validación cruzada 5-fold** y **predicciones out-of-fold** (más robusto que un único split con 200 filas). SHAP values para explainability. **AUC-ROC ≈ 0.78.**
 
 ### Etapa 6 — API de Predicción
 FastAPI con Pydantic v2, endpoint de predicción automática desde SQL, historial por camión y resumen de flota.
@@ -207,22 +207,34 @@ docker compose down
 
 ## Resultados del Modelo
 
+Métricas por **validación cruzada 5-fold** sobre 200 camiones (24.5% con fallo).
+El umbral se fija priorizando **recall** (en mantenimiento predictivo, no detectar
+un fallo cuesta más que una falsa alarma).
+
 | Métrica | Random Forest | XGBoost |
 |---|---|---|
-| AUC-ROC | 1.0000 | 1.0000 |
-| F1 Score | 1.0000 | 1.0000 |
-| Recall (fallo) | 1.0000 | 1.0000 |
+| AUC-ROC (out-of-fold) | **0.78** | 0.74 |
+| Recall (fallo) | 0.76 | 0.71 |
+| Precision (fallo) | 0.39 | 0.44 |
+| F1 (fallo) | 0.52 | 0.54 |
 
-**Top features (SHAP):**
+> **Nota de honestidad:** una versión anterior reportaba AUC = 1.0. Eso era
+> **fuga de datos** (features derivadas de la propia etiqueta de fallo) sobre un
+> generador de datos degenerado. Se corrigió: datos sintéticos realistas (fallo
+> probabilístico, sensores con ruido que se solapan) y un test automático
+> (`tests/test_no_target_leakage.py`) que impide que la fuga reaparezca. Un AUC
+> de 0.78 honesto vale más que un 1.0 falso.
 
-| Feature | Importancia |
-|---|---|
-| total_downtime_days | 0.097 |
-| total_fallos | 0.082 |
-| ratio_fallos | 0.068 |
-| max_temp_7d | 0.033 |
-| avg_temp_7d | 0.031 |
-| avg_oil_7d | 0.027 |
+**Top features (SHAP)** — ahora señales físicas legítimas, no derivadas del target:
+
+| Feature | Importancia | Interpretación |
+|---|---|---|
+| temp_trend | 0.054 | Tendencia al alza de temperatura |
+| avg_kpl_30d | 0.050 | Caída de rendimiento de combustible |
+| avg_oil_7d | 0.036 | Presión de aceite baja |
+| min_oil_7d | 0.032 | Mínimo de presión de aceite |
+| std_temp_7d | 0.028 | Inestabilidad térmica |
+| avg_coolant_7d | 0.025 | Temperatura de refrigerante |
 
 ---
 
