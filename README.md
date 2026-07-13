@@ -1,6 +1,7 @@
 # 🚛 FleetML — Sistema de Mantenimiento Predictivo
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+[![CI](https://github.com/ronaldpiedrahita-png/fleet-ml-prediccion/actions/workflows/ci.yml/badge.svg)](https://github.com/ronaldpiedrahita-png/fleet-ml-prediccion/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)

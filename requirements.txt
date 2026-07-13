@@ -1,32 +1,35 @@
-# FleetML — dependencias de Python (Python 3.11+)
+# FleetML — dependencias de Python (Python 3.12)
+# Versiones fijadas al entorno con el que se entrenó y probó el proyecto.
 # Instalar con:  pip install -r requirements.txt
 
 # API y servidor web
-fastapi==0.111.0
+fastapi==0.139.0
 uvicorn[standard]==0.29.0
-jinja2==3.1.4
+jinja2==3.1.6
 aiofiles==23.2.1
 
 # Base de datos
-sqlalchemy==2.0.30
+sqlalchemy==2.0.49
 psycopg2-binary==2.9.9
 
 # Datos y Machine Learning
-pandas==2.2.2
-numpy==1.26.4
-scikit-learn==1.4.2
-xgboost==2.0.3
-imbalanced-learn==0.12.2
-shap==0.45.1
-joblib==1.4.2
-matplotlib==3.8.4
-mlflow==2.13.0
+pandas==3.0.3
+numpy==2.4.6
+scikit-learn==1.8.0
+xgboost==3.2.0
+shap==0.51.0
+joblib==1.5.3
+matplotlib==3.10.9
 
 # Utilidades
-requests==2.32.2
-python-dotenv==1.0.1
+requests==2.34.2
+python-dotenv==1.0.0
 faker==25.2.0
 apscheduler==3.10.4
 
 # Tests
-pytest==8.2.0
+pytest==9.0.3
+
+# Opcional — experiment tracking. El código funciona sin MLflow (import protegido).
+# Se instala aparte porque su resolución de dependencias choca con numpy 2.x:
+#   pip install mlflow

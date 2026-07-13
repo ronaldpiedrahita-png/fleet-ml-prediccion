@@ -168,7 +168,7 @@ def health():
         "model_loaded": "model" in store,
         "model_version": MODEL_VER,
         "threshold":    THRESHOLD,
-        "db":           DATABASE_URL.split("@")[1]  # solo host/db, sin contraseña
+        "db":           DATABASE_URL.split("@")[-1]  # solo host/db, sin contraseña
     }
 
 @app.post("/predict/truck", response_model=PredictionOut)
