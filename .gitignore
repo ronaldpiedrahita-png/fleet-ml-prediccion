@@ -1,7 +1,22 @@
-﻿venv/
+# Entornos y secretos
+venv/
+.venv/
+.env
+.env.*
+*.env
+!.env.example
+
+# Python
 __pycache__/
 *.pyc
-.env
+*.pyo
+
+# ML / experimentos / logs
 mlruns/
 logs/
 *.log
+
+# Sistema operativo / IDE
+.DS_Store
+.idea/
+.vscode/

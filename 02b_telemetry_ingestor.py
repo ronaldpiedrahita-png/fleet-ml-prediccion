@@ -4,8 +4,8 @@ from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# â”€â”€ ConexiÃ³n directa sin .env â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-DATABASE_URL = "postgresql://postgres:***REMOVED***@localhost/fleetdb"
+# â”€â”€ ConexiÃ³n: se lee de la variable de entorno DATABASE_URL â”€â”€
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/fleetdb")
 engine       = create_engine(DATABASE_URL)
 Session      = sessionmaker(bind=engine)
 

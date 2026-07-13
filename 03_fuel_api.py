@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:***REMOVED***@localhost/fleetdb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost/fleetdb")
 engine  = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
