@@ -29,6 +29,7 @@ apscheduler==3.10.4
 
 # Tests
 pytest==9.0.3
+httpx==0.28.1        # requerido por fastapi.testclient.TestClient
 
 # Opcional — experiment tracking. El código funciona sin MLflow (import protegido).
 # Se instala aparte porque su resolución de dependencias choca con numpy 2.x:
