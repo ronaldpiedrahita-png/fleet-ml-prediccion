@@ -4,15 +4,13 @@ Un AUC ~1.0 significaria que reaparecio la fuga de datos; un AUC ~0.5 que el
 modelo no aprende nada. El rango (0.65, 0.95) es lo esperable en mantenimiento
 predictivo con senales de sensores ruidosas.
 """
-import sys
 from pathlib import Path
 
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ml_features import select_features  # noqa: E402
+from fleetml.features import select_features
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "fleet_features.csv"
 

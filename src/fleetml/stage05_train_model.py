@@ -1,9 +1,9 @@
-# 05_train_model.py
+# fleetml.stage05_train_model
 #
 # Entrena y compara Random Forest vs XGBoost para predecir fallo de motor.
 # La evaluacion usa validacion cruzada 5-fold (AUC robusto) + un conjunto de
 # prueba retenido para la matriz de confusion. La seleccion de features excluye
-# columnas con fuga de datos (ver ml_features.py).
+# columnas con fuga de datos (ver fleetml/features.py).
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ from sklearn.metrics import (roc_auc_score, f1_score, precision_score,
                              recall_score, confusion_matrix)
 from xgboost import XGBClassifier
 
-from ml_features import select_features
+from fleetml.features import select_features
 
 
 def choose_threshold(y_true, prob, target_recall=0.70):

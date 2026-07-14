@@ -1,5 +1,5 @@
-# dashboard.py
-# Ejecutar: uvicorn dashboard:app --port 8080
+# fleetml.dashboard — servidor del dashboard web
+# Ejecutar: uvicorn fleetml.dashboard:app --port 8080
 # Ver en:   http://localhost:8080
 
 import os
@@ -30,8 +30,7 @@ def get_fleet_data():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     summary, alerts, health = get_fleet_data()
-    return templates.TemplateResponse("dashboard.html", {
-        "request":  request,
+    return templates.TemplateResponse(request, "dashboard.html", {
         "summary":  summary,
         "alerts":   alerts,
         "health":   health,

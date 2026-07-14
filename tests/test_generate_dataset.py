@@ -1,10 +1,6 @@
 """Tests del generador de datos sinteticos."""
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from generate_dataset import FEATURES, TARGET, simulate_fleet  # noqa: E402
-from ml_features import LEAKING_FEATURES  # noqa: E402
+from fleetml.generate_dataset import FEATURES, TARGET, simulate_fleet
+from fleetml.features import LEAKING_FEATURES
 
 
 def test_schema_and_size():

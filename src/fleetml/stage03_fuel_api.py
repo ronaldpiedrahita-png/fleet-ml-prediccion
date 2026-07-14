@@ -1,5 +1,5 @@
-# 03_fuel_api.py
-# API de precios CRE: https://api.datos.gob.mx/v1/precio-gasolina-diaria-por-estacion
+# fleetml.stage03_fuel_api — Etapa 3: API de precios CRE (Ejecutar: python -m fleetml.stage03_fuel_api)
+# https://api.datos.gob.mx/v1/precio-gasolina-diaria-por-estacion
 # Sin API key. Datos abiertos del gobierno mexicano.
 
 import os, requests, time

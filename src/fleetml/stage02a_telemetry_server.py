@@ -1,5 +1,5 @@
-# 02a_telemetry_server.py  ← correr con: uvicorn 02a_telemetry_server:app --port 8001
-# pip install fastapi uvicorn numpy
+# fleetml.stage02a_telemetry_server — Etapa 2a: servidor mock de telemetría
+# Ejecutar: uvicorn fleetml.stage02a_telemetry_server:app --port 8001
 
 import random, time
 import numpy as np

@@ -1,12 +1,12 @@
-# 06_fleet_api.py
-# Ejecutar: uvicorn 06_fleet_api:app --reload --port 8000
+# fleetml.api — API de predicción
+# Ejecutar: uvicorn fleetml.api:app --reload --port 8000
 # Docs: http://localhost:8000/docs
 
 import os
 import joblib
-import numpy as np
+import pandas as pd
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
@@ -184,12 +184,12 @@ def predict_failure(data: TruckFeatures, db: Session = Depends(get_db)):
     features = store["features"]
 
     # Construir vector de features en el orden correcto
-    X = np.array([[getattr(data, f, 0.0) for f in features]])
+    X = pd.DataFrame([[getattr(data, f, 0.0) for f in features]], columns=features)
 
     prob       = float(model.predict_proba(X)[0, 1])
     level, rec = prob_to_alert(prob)
     top        = get_top_risk()
-    now        = datetime.utcnow()
+    now        = datetime.now(timezone.utc)
 
     # Guardar predicción en SQL
     try:
@@ -239,15 +239,15 @@ def predict_from_db(truck_id: int, db: Session = Depends(get_db)):
     cols     = list(row._mapping.keys())
 
     # Construir vector
-    X = np.array([[
+    X = pd.DataFrame([[
         float(row._mapping.get(f, 0.0) or 0.0)
         for f in features
-    ]])
+    ]], columns=features)
 
     prob       = float(store["model"].predict_proba(X)[0, 1])
     level, rec = prob_to_alert(prob)
     top        = get_top_risk()
-    now        = datetime.utcnow()
+    now        = datetime.now(timezone.utc)
 
     # Guardar en SQL
     try:

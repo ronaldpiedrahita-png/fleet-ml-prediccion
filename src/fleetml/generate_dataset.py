@@ -14,8 +14,8 @@ Aqui el fallo es *probabilistico*: cada camion tiene un desgaste latente continu
 Resultado: un problema de ML aprendible pero no trivial (AUC realista ~0.80-0.88).
 
 Uso:
-    python generate_dataset.py          # escribe data/fleet_features.csv
-    python generate_dataset.py --check  # solo imprime diagnostico, no escribe
+    python -m fleetml.generate_dataset          # escribe data/fleet_features.csv
+    python -m fleetml.generate_dataset --check  # solo imprime diagnostico, no escribe
 """
 from __future__ import annotations
 

@@ -4,14 +4,12 @@ Un feature con fuga es aquel que, por sí solo, separa casi perfectamente el
 target. En un problema real ningún sensor logra eso: si ocurre, es que el
 feature deriva de la etiqueta (o de un proceso de datos degenerado).
 """
-import sys
 from pathlib import Path
 
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from ml_features import LEAKING_FEATURES, select_features  # noqa: E402
+from fleetml.features import LEAKING_FEATURES, select_features
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "fleet_features.csv"
 NON_FEATURES = {"will_fail", "truck_id"}

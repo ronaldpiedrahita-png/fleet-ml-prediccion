@@ -1,5 +1,5 @@
-# 07_scheduler.py
-# Ejecutar: python 07_scheduler.py
+# fleetml.stage07_scheduler — Etapa 7: jobs automáticos (APScheduler)
+# Ejecutar: python -m fleetml.stage07_scheduler
 # Predice automáticamente todos los camiones cada hora
 
 import requests

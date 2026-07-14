@@ -134,17 +134,19 @@ GET  /docs                           → Documentación Swagger
 
 ```
 fleet-ml-prediccion/
-├── 01_fleet_db_setup.py        # Esquema SQL + seed data (desgaste + fallo probabilístico)
-├── 02a_telemetry_server.py     # Servidor mock de sensores
-├── 02b_telemetry_ingestor.py   # Cliente de ingesta paralela
-├── 03_fuel_api.py              # API de combustible CRE
-├── 04_feature_engineering.py   # Features desde SQL (sin columnas con fuga)
-├── 05_train_model.py           # Entrenamiento + CV + SHAP
-├── generate_dataset.py         # Genera el dataset sintético SIN base de datos
-├── ml_features.py              # Selección de features (fuente única, anti-fuga)
-├── fleet_api.py                # API de predicción (FastAPI)
-├── dashboard.py                # Servidor del dashboard web
-├── 07_scheduler.py             # Jobs automáticos (APScheduler)
+├── src/fleetml/                        # Paquete instalable (pip install -e .)
+│   ├── stage01_db_setup.py             # Etapa 1 — Esquema SQL + seed data
+│   ├── stage02a_telemetry_server.py    # Etapa 2a — Servidor mock de sensores
+│   ├── stage02b_telemetry_ingestor.py  # Etapa 2b — Cliente de ingesta paralela
+│   ├── stage03_fuel_api.py             # Etapa 3 — API de combustible CRE
+│   ├── stage04_feature_engineering.py  # Etapa 4 — Features desde SQL (sin fugas)
+│   ├── stage05_train_model.py          # Etapa 5 — Entrenamiento + CV + SHAP
+│   ├── stage07_scheduler.py            # Etapa 7 — Jobs automáticos (APScheduler)
+│   ├── generate_dataset.py             # Dataset sintético SIN base de datos
+│   ├── features.py                     # Selección de features (fuente única, anti-fuga)
+│   ├── api.py                          # Etapa 6 — API de predicción (FastAPI)
+│   ├── dashboard.py                    # Servidor del dashboard web
+│   └── predict_all.py                  # Utilidad: predice toda la flota via API
 ├── tests/                      # Suite de pytest (fuga, modelo, API, datos)
 ├── .github/workflows/ci.yml    # Integración continua (GitHub Actions)
 ├── templates/dashboard.html    # Dashboard con mapa Leaflet
@@ -152,7 +154,7 @@ fleet-ml-prediccion/
 ├── data/                       # Datasets generados (.csv)
 ├── .env.example                # Plantilla de variables de entorno
 ├── Dockerfile · docker-compose.yml
-├── requirements.txt · pytest.ini · LICENSE
+├── pyproject.toml · requirements.txt · pytest.ini · LICENSE
 ```
 
 ---
@@ -176,12 +178,17 @@ python -m venv venv
 venv\Scripts\activate  # Windows
 source venv/bin/activate  # Mac/Linux
 
-# Instalar dependencias
+# Instalar dependencias + el paquete fleetml en modo editable
 pip install -r requirements.txt
+pip install -e .
 
 # Configurar base de datos: copiar la plantilla y poner tu contraseña
 cp .env.example .env      # luego edita DATABASE_URL en .env
 ```
+
+> `pip install -e .` instala `fleetml` como paquete editable (layout `src/`):
+> permite `import fleetml.xxx` y `python -m fleetml.xxx` desde cualquier
+> directorio, sin depender del directorio actual.
 
 ### Opción rápida — reproducir el modelo sin base de datos
 
@@ -189,40 +196,40 @@ El dataset de features se puede **regenerar sin PostgreSQL** (datos sintéticos
 realistas). Ideal para revisar el modelo end-to-end en segundos:
 
 ```bash
-python generate_dataset.py      # genera data/fleet_features.csv (sin BD)
-python 05_train_model.py        # entrena y reporta métricas honestas (AUC ~0.78)
-pytest                          # corre los 11 tests (incluye guarda anti-fuga)
+python -m fleetml.generate_dataset   # genera data/fleet_features.csv (sin BD)
+python -m fleetml.stage05_train_model  # entrena y reporta métricas honestas (AUC ~0.78)
+pytest                                 # corre los 11 tests (incluye guarda anti-fuga)
 ```
 
 ### Ejecutar el pipeline completo
 
 ```bash
 # 1. Crear BD y datos
-python 01_fleet_db_setup.py
+python -m fleetml.stage01_db_setup
 
 # 2. Servidor de telemetría (Terminal 1)
-uvicorn 02a_telemetry_server:app --port 8001
+uvicorn fleetml.stage02a_telemetry_server:app --port 8001
 
 # 3. Ingestor de datos (Terminal 2)
-python 02b_telemetry_ingestor.py
+python -m fleetml.stage02b_telemetry_ingestor
 
 # 4. API de combustible
-python 03_fuel_api.py
+python -m fleetml.stage03_fuel_api
 
 # 5. Feature engineering
-python 04_feature_engineering.py
+python -m fleetml.stage04_feature_engineering
 
 # 6. Entrenar modelo
-python 05_train_model.py
+python -m fleetml.stage05_train_model
 
 # 7. API de predicción (Terminal 3)
-uvicorn fleet_api:app --port 8000
+uvicorn fleetml.api:app --port 8000
 
 # 8. Dashboard web (Terminal 4)
-uvicorn dashboard:app --port 8080
+uvicorn fleetml.dashboard:app --port 8080
 
 # 9. Scheduler automático (Terminal 5)
-python 07_scheduler.py
+python -m fleetml.stage07_scheduler
 ```
 
 ### Con Docker (recomendado)

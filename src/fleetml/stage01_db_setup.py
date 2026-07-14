@@ -1,5 +1,5 @@
-﻿# 01_fleet_db_setup.py
-# pip install sqlalchemy psycopg2-binary python-dotenv faker numpy
+﻿# fleetml.stage01_db_setup — Etapa 1: esquema SQL + seed data
+# Ejecutar: python -m fleetml.stage01_db_setup
 
 import os, random
 import numpy as np

@@ -1,4 +1,5 @@
-# 04_feature_engineering.py
+# fleetml.stage04_feature_engineering — Etapa 4: features desde SQL
+# Ejecutar: python -m fleetml.stage04_feature_engineering
 
 import os
 import pandas as pd
@@ -141,7 +142,7 @@ def build_ml_dataset():
     # Lista final de features.
     # OJO: total_fallos, ratio_fallos y total_downtime_days derivan de la propia
     # etiqueta de fallo (is_failure) -> serian FUGA DE DATOS. Se excluyen a
-    # proposito. La lista negra vive en ml_features.LEAKING_FEATURES.
+    # proposito. La lista negra vive en fleetml.features.LEAKING_FEATURES.
     FEATURES = [
         "truck_age_years", "odometer_km",    "engine_hours",
         "avg_temp_7d",     "max_temp_7d",    "std_temp_7d",

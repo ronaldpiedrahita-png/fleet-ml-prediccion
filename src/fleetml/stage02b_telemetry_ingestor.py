@@ -1,4 +1,5 @@
-﻿# 02b_telemetry_ingestor.py
+﻿# fleetml.stage02b_telemetry_ingestor — Etapa 2b: ingesta paralela
+# Ejecutar: python -m fleetml.stage02b_telemetry_ingestor
 import os, time, requests
 from datetime import datetime
 from sqlalchemy import create_engine, text

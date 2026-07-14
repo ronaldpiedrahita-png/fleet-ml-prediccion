@@ -4,17 +4,14 @@ No requieren PostgreSQL: la escritura de la prediccion en BD esta protegida con
 try/except, asi que el endpoint responde igual sin base de datos.
 """
 import os
-import sys
-from pathlib import Path
 
 # Usar SQLite en memoria: el test no necesita PostgreSQL ni el driver psycopg2.
-# Debe fijarse ANTES de importar fleet_api (que crea el engine al importarse).
+# Debe fijarse ANTES de importar fleetml.api (que crea el engine al importarse).
 os.environ["DATABASE_URL"] = "sqlite://"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import fleet_api  # noqa: E402
+from fleetml import api as fleet_api  # noqa: E402
 
 
 def test_prob_to_alert_thresholds():
